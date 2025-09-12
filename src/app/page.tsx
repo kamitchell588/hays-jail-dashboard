@@ -8,6 +8,10 @@ import PopulationChart from '@/components/PopulationChart';
 import ChargeTypesChart from '@/components/ChargeTypesChart';
 import AdmissionsReleasesBarChart from '@/components/AdmissionsReleasesBarChart';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import BrandHeader from '@/components/BrandHeader';
+import BrandFooter from '@/components/BrandFooter';
+import DemoCharts from '@/components/DemoCharts';
+import { isDemoMode } from '@/utils/env';
 
 export default function Home() {
   const { data, loading, error } = useJailData();
@@ -110,17 +114,22 @@ export default function Home() {
     );
   }
 
+  const showDemoCharts = isDemoMode();
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Jail Population Dashboard
-          </h1>
-          <p className="text-gray-600">
-            Daily jail population and charge type analytics
-          </p>
-        </header>
+    <div className="min-h-screen flex flex-col">
+      <BrandHeader />
+      
+      <main className="flex-1 bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <header className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Jail Population Dashboard
+            </h1>
+            <p className="text-gray-600">
+              Daily jail population and charge type analytics
+            </p>
+          </header>
 
         <DateRangeFilter
           startDate={startDate}
@@ -169,7 +178,14 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-6">
           <ChargeTypesChart data={filteredData} />
         </div>
-      </div>
+        
+        {showDemoCharts && (
+          <DemoCharts data={filteredData} />
+        )}
+        </div>
+      </main>
+      
+      <BrandFooter />
     </div>
   );
 }
