@@ -1,105 +1,141 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useJailData } from '@/hooks/useJailData';
-import KPICard from '@/components/KPICard';
-import PopulationChart from '@/components/PopulationChart';
-import ChargeTypesChart from '@/components/ChargeTypesChart';
-import DateRangeFilter from '@/components/DateRangeFilter';
+import React, { useState, useEffect } from 'react';
+import Papa from 'papaparse';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
-export default function Home() {
-  const { data, loading, error } = useJailData();
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+import './globals.css';
 
-  const { minDate, maxDate } = useMemo(() => {
-    if (data.length === 0) return { minDate: '', maxDate: '' };
-    const dates = data.map(d => d.date).sort();
-    return { minDate: dates[0], maxDate: dates[dates.length - 1] };
-  }, [data]);
+type JailData = {
+  date: string;
+  total_population: number;
+  pretrial_population: number;
+  sentenced_population: number;
+  avg_length_of_stay_days: number;
+  felonies: number;
+  misdemeanors: number;
+  holds: number;
+  other: number;
+  // Optionally extend with booking/release later
+};
 
-  const filteredData = useMemo(() => {
-    if (!startDate && !endDate) return data;
-    
-    return data.filter(item => {
-      const itemDate = item.date;
-      const afterStart = !startDate || itemDate >= startDate;
-      const beforeEnd = !endDate || itemDate <= endDate;
-      return afterStart && beforeEnd;
-    });
-  }, [data, startDate, endDate]);
+export default function Dashboard() {
+  const [data, setData] = useState<JailData[]>([]);
 
-  const kpis = useMemo(() => {
-    if (filteredData.length === 0) return { totalPopulation: 0, pretrialPercent: 0, avgLengthOfStay: 0 };
-    
-    const latest = filteredData[filteredData.length - 1];
-    const totalPopulation = latest.total_population;
-    const pretrialPercent = ((latest.pretrial_population / latest.total_population) * 100);
-    const avgLengthOfStay = filteredData.reduce((sum, item) => sum + item.avg_length_of_stay_days, 0) / filteredData.length;
-    
-    return { totalPopulation, pretrialPercent, avgLengthOfStay };
-  }, [filteredData]);
+  useEffect(() => {
+    fetch('/jail_daily_with_booking_release.csv')
+      .then((response) => response.text())
+      .then((csvText) => {
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            setData(results.data as JailData[]);
+          },
+        });
+      });
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading jail data...</div>
-      </div>
-    );
-  }
+  const latest = data[data.length - 1] || {
+    total_population: 0,
+    pretrial_population: 0,
+    avg_length_of_stay_days: 0,
+  };
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Error: {error}</div>
-      </div>
-    );
-  }
+  const pretrialPercent =
+    latest.total_population > 0
+      ? ((latest.pretrial_population / latest.total_population) * 100).toFixed(1)
+      : '0';
+
+  // Demo booking/release: Fake values based on changes in population
+  const bookingReleaseData = data.map((d, i) => {
+    const prev = data[i - 1] || d;
+    const change = d.total_population - prev.total_population;
+    return {
+      date: d.date,
+      bookings: Math.max(0, change + 10), // simulate ~10 releases per day
+      releases: Math.max(0, 10 - change), // inverse of above
+    };
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Jail Population Dashboard
-          </h1>
-          <p className="text-gray-600">
-            Daily jail population and charge type analytics
+    <main className="p-6 space-y-10">
+      <h1 className="text-2xl font-bold">Hays County Jail Dashboard</h1>
+
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white shadow p-4 rounded">
+          <h2 className="text-sm text-gray-500">Total Population</h2>
+          <p className="text-2xl font-bold">{latest.total_population}</p>
+        </div>
+        <div className="bg-white shadow p-4 rounded">
+          <h2 className="text-sm text-gray-500">Pretrial %</h2>
+          <p className="text-2xl font-bold">{pretrialPercent}%</p>
+        </div>
+        <div className="bg-white shadow p-4 rounded">
+          <h2 className="text-sm text-gray-500">Avg Length of Stay</h2>
+          <p className="text-2xl font-bold">
+            {latest.avg_length_of_stay_days} days
           </p>
-        </header>
-
-        <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          minDate={minDate}
-          maxDate={maxDate}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <KPICard
-            title="Total Population"
-            value={kpis.totalPopulation}
-            subtitle="Current inmates"
-          />
-          <KPICard
-            title="Pretrial %"
-            value={`${kpis.pretrialPercent.toFixed(1)}%`}
-            subtitle="Awaiting trial"
-          />
-          <KPICard
-            title="Avg Length of Stay"
-            value={`${kpis.avgLengthOfStay.toFixed(1)} days`}
-            subtitle="Average stay duration"
-          />
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PopulationChart data={filteredData} />
-          <ChargeTypesChart data={filteredData} />
-        </div>
-      </div>
-    </div>
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Daily Jail Population</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="total_population" stroke="#8884d8" />
+          </LineChart>
+        </ResponsiveContainer>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Charge Breakdown</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="felonies" stackId="a" fill="#8884d8" />
+            <Bar dataKey="misdemeanors" stackId="a" fill="#82ca9d" />
+            <Bar dataKey="holds" stackId="a" fill="#ffc658" />
+            <Bar dataKey="other" stackId="a" fill="#ff8042" />
+          </BarChart>
+        </ResponsiveContainer>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-2">📊 Bookings vs Releases (Demo)</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={bookingReleaseData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="bookings" fill="#2b6cb0" />
+            <Bar dataKey="releases" fill="#68d391" />
+          </BarChart>
+        </ResponsiveContainer>
+      </section>
+    </main>
   );
 }
