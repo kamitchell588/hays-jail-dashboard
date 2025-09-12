@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Papa from 'papaparse';
 import { useJailData } from '@/hooks/useJailData';
 import KPICard from '@/components/KPICard';
 import PopulationChart from '@/components/PopulationChart';
@@ -20,15 +21,46 @@ export default function Home() {
   }, [data]);
 
   const filteredData = useMemo(() => {
-    if (!startDate && !endDate) return data;
-    
-    return data.filter(item => {
-      const itemDate = item.date;
-      const afterStart = !startDate || itemDate >= startDate;
-      const beforeEnd = !endDate || itemDate <= endDate;
-      return afterStart && beforeEnd;
+    if (!data?.length) return [];
+    return data.filter(d => {
+      const dd = d.date; // YYYY-MM-DD strings
+      const okStart = !startDate || dd >= startDate;
+      const okEnd   = !endDate   || dd <= endDate;
+      return okStart && okEnd;
     });
   }, [data, startDate, endDate]);
+
+  const handleDownload = () => {
+    if (!filteredData?.length) return;
+    
+    // Choose column order explicitly
+    const cols = [
+      'date','total_population','pretrial_population','sentenced_population',
+      'avg_length_of_stay_days','felonies','misdemeanors','holds','other',
+      'admissions','releases'
+    ];
+    
+    const rows = filteredData.map(r => {
+      const o: any = {};
+      cols.forEach(c => { o[c] = (r as any)[c]; });
+      return o;
+    });
+    
+    const csv = Papa.unparse(rows, { columns: cols });
+    
+    // Add UTF-8 BOM so Excel opens cleanly
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const from = startDate || 'all';
+    const to   = endDate   || 'dates';
+    a.href = url;
+    a.download = `hays_jail_data_${from}_${to}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const kpis = useMemo(() => {
     if (filteredData.length === 0) return { 
@@ -97,6 +129,8 @@ export default function Home() {
           onEndDateChange={setEndDate}
           minDate={minDate}
           maxDate={maxDate}
+          onDownloadCSV={handleDownload}
+          hasData={filteredData.length > 0}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">

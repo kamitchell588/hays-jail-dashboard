@@ -7,6 +7,8 @@ interface DateRangeFilterProps {
   onEndDateChange: (date: string) => void;
   minDate?: string;
   maxDate?: string;
+  onDownloadCSV?: () => void;
+  hasData?: boolean;
 }
 
 export default function DateRangeFilter({
@@ -15,13 +17,26 @@ export default function DateRangeFilter({
   onStartDateChange,
   onEndDateChange,
   minDate,
-  maxDate
+  maxDate,
+  onDownloadCSV,
+  hasData = false
 }: DateRangeFilterProps) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-      <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide mb-3">
-        Date Range Filter
-      </h3>
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+          Date Range Filter
+        </h3>
+        {onDownloadCSV && (
+          <button
+            onClick={onDownloadCSV}
+            disabled={!hasData}
+            className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+          >
+            Download CSV
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-4">
         <div className="flex flex-col">
           <label htmlFor="start-date" className="text-sm text-gray-600 mb-1">
