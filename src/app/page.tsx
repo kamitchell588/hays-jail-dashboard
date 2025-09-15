@@ -11,6 +11,11 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import BrandHeader from '@/components/BrandHeader';
 import BrandFooter from '@/components/BrandFooter';
 import DemoCharts from '@/components/DemoCharts';
+import TopChargesChart from '@/components/TopChargesChart';
+import HighestChargeChart from '@/components/HighestChargeChart';
+import OutsourcingChart from '@/components/OutsourcingChart';
+import ServicesChart from '@/components/ServicesChart';
+import ReleaseStatsChart from '@/components/ReleaseStatsChart';
 import { isDemoMode } from '@/utils/env';
 
 export default function Home() {
@@ -180,7 +185,36 @@ export default function Home() {
         </div>
         
         {showDemoCharts && (
-          <DemoCharts data={filteredData} />
+          <>
+            <DemoCharts data={filteredData} />
+            
+            <div className="mb-8">
+              <div className="mb-6 p-4 bg-brand-50 border border-brand-200 rounded-md">
+                <h2 className="text-xl font-semibold text-brand-800 mb-2">Demo Mode Features</h2>
+                <p className="text-brand-700 text-sm">
+                  The following charts demonstrate additional RFP requirements using synthetic data. 
+                  In production, these would integrate with your jail management system APIs.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <TopChargesChart />
+                <HighestChargeChart />
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6 mb-8">
+                <OutsourcingChart />
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6 mb-8">
+                <ServicesChart />
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6">
+                <ReleaseStatsChart />
+              </div>
+            </div>
+          </>
         )}
         </div>
       </main>
